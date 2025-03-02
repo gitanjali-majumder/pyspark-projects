@@ -7,10 +7,12 @@
 # importing required modules
 import requests
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col,to_timestamp,from_unixtime,StructType,explode_outer,ArrayType,to_date,max,date_format,expr,round,from_utc_timestamp
+from pyspark.sql.functions import col,to_timestamp,from_unixtime,StructType,explode_outer,ArrayType,to_date,max,date_format,expr,round,from_utc_timestamp,avg
 import json
 from datetime import datetime
 import pytz
+from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
 
 # COMMAND ----------
 
@@ -95,17 +97,6 @@ display(df_cloudy)
 
 # COMMAND ----------
 
-# Top 3 Cities Experiencing more temp and high average temp throughout
-df_temp_drop = df_renamed.groupBy("Date","City","Max_Temp_Recorded","Min_Temp_Recorded","Feels_Like").agg(max((expr("Min_Temp_Recorded+Max_Temp_Recorded"))/2).alias("Average_Temp")).orderBy(max((expr("Min_Temp_Recorded+Max_Temp_Recorded"))/2).desc()).limit(3)
-df_temp_drop = df_temp_drop.withColumn("Max_Temp_in_Celcius",round(col("Max_Temp_Recorded")-273.15,2))\
-                        .withColumn("Min_Temp_in_Celcius",round(col("Min_Temp_Recorded")-273.15,2))\
-                        .withColumn("Feels_Like_in_Celcius",round(col("Feels_Like")-273.15,2))\
-                        .withColumn("Average_Temp_in_Celcius",round(col("Average_Temp")-273.15,2))\
-                        .drop("Max_Temp_Recorded","Min_Temp_Recorded","Feels_Like","Average_Temp")                    
-display(df_temp_drop)
-
-# COMMAND ----------
-
 # Sun-Rise & Sun-Set Timings in IST
 df_sun_rise_set = df_flatten.select("Date","name","sys_sunrise","sys_sunset").withColumn("Date",to_date("Date"))\
                             .withColumnRenamed("name","City")\
@@ -116,6 +107,36 @@ df_sun_rise_set = df_flatten.select("Date","name","sys_sunrise","sys_sunset").wi
                             .drop("sys_sunrise","sys_sunset","Sunrise","Sunset")\
                             .dropDuplicates()
 display(df_sun_rise_set)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Visualize using Beautifulsoup
+
+# COMMAND ----------
+
+# Top 3 Cities Experiencing more temp and high average temp throughout
+df_temp_drop = df_renamed.groupBy("Date","City","Max_Temp_Recorded","Min_Temp_Recorded","Feels_Like").agg(avg((expr("Min_Temp_Recorded+Max_Temp_Recorded"))/2).alias("Average_Temp")).orderBy(avg((expr("Min_Temp_Recorded+Max_Temp_Recorded"))/2).desc())
+df_temp_drop = df_temp_drop.withColumn("Max_Temp_in_Celsius",round(col("Max_Temp_Recorded")-273.15,2))\
+                        .withColumn("Min_Temp_in_Celsius",round(col("Min_Temp_Recorded")-273.15,2))\
+                        .withColumn("Feels_Like_in_Celsius",round(col("Feels_Like")-273.15,2))\
+                        .withColumn("Average_Temp_in_Celsius",round(col("Average_Temp")-273.15,2))\
+                        .drop("Max_Temp_Recorded","Min_Temp_Recorded","Feels_Like","Average_Temp") 
+df_temp_drop = df_temp_drop.groupBy("City").agg(round(avg("Average_Temp_in_Celsius"),2).alias("Average_Temperature")).orderBy(avg("Average_Temp_in_Celsius").desc()).limit(3)              
+display(df_temp_drop)
+
+# COMMAND ----------
+
+#Create a Bar Chart for the Temperature data
+df_pandas= df_temp_drop.toPandas()
+
+plt.figure(figsize=(5,6))
+plt.bar(df_pandas['City'],df_pandas['Average_Temperature'],color ='orange')
+plt.title("Top 3 cities experiencing high Average Temp in a Day")
+plt.xlabel('City')
+plt.ylabel('Average Temp in Celsius')
+plt.xticks(rotation=0)
+plt.show()
 
 # COMMAND ----------
 
