@@ -11,7 +11,6 @@ from pyspark.sql.functions import col,to_timestamp,from_unixtime,StructType,expl
 import json
 from datetime import datetime
 import pytz
-from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
 
 # COMMAND ----------
@@ -111,7 +110,7 @@ display(df_sun_rise_set)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Visualize using Beautifulsoup
+# MAGIC ### Visualize using Matplotlib
 
 # COMMAND ----------
 
